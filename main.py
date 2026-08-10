@@ -12,9 +12,9 @@ from config import config
 # ========= Configuration =========
 
 BASE_DIR = Path(__file__).parent.resolve()
-STATE_FILE = BASE_DIR / "latest.json"
-BROWSER_PROFILE_DIR = BASE_DIR / "browser_profile"
-LOG_FILE = BASE_DIR / "scraping.log"
+STATE_FILE = BASE_DIR / "data" / "latest.json"
+BROWSER_PROFILE_DIR = BASE_DIR / "data" / "browser_profile"
+LOG_FILE = BASE_DIR / "data" / "scraping.log"
 
 # ============ Logger =============
 

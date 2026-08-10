@@ -227,5 +227,5 @@ browser_profile/
 latest.json
 latest.json.tmp
 *.zip
-
+data/
 
