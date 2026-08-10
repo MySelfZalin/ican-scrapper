@@ -1,9 +1,12 @@
 import json
-import logging
 import random
+import sys
 import time
 from pathlib import Path
+
+from loguru import logger
 from playwright.sync_api import sync_playwright
+
 from config import config
 
 # ========= Configuration =========
@@ -11,14 +14,26 @@ from config import config
 BASE_DIR = Path(__file__).parent.resolve()
 STATE_FILE = BASE_DIR / "latest.json"
 BROWSER_PROFILE_DIR = BASE_DIR / "browser_profile"
+LOG_FILE = BASE_DIR / "scraping.log"
 
 # ============ Logger =============
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
+
+logger.remove()
+
+logger.add(
+    sys.stderr,
+    format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+    colorize=True,
 )
-logger = logging.getLogger(__name__)
+
+logger.add(
+    LOG_FILE,
+    rotation="2MB",
+    retention="7 days",
+    compression="zip",
+    encoding="utf-8",
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+)
 
 
 
@@ -90,7 +105,7 @@ def main():
             try:
                 data = read_reading(page)
                 write_state(data)
-                logger.info(f"[i] {data['value']} {data['unit']}  (на сайте: {data['time']})")
+                logger.info(f"[i] {data['value']} {data['unit']}")
             except Exception as e:
                 logger.warning(f"[X] Ошибка: {e}")
                 if not is_logged_in(page):
