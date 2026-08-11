@@ -4,6 +4,9 @@ services:
             container_name: ican_scrapper
             restart: unless-stopped
 
+            environment:
+                  - TZ=Europe/Moscow
+
             env_file:
                   - .env 
 
