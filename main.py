@@ -1,22 +1,20 @@
 import json
 import random
+import signal
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
-from playwright.sync_api import sync_playwright
+from playwright.sync_api import TimeoutError, sync_playwright
 
 from config import config
-
-# ========= Configuration =========
 
 BASE_DIR = Path(__file__).parent.resolve()
 STATE_FILE = BASE_DIR / "data" / "latest.json"
 BROWSER_PROFILE_DIR = BASE_DIR / "data" / "browser_profile"
 LOG_FILE = BASE_DIR / "data" / "scraping.log"
-
-# ============ Logger =============
 
 logger.remove()
 
@@ -36,6 +34,9 @@ logger.add(
 )
 
 
+def _request_shutdown(*_):
+    raise KeyboardInterrupt
+
 
 def write_state(data: dict):
     tmp_file = STATE_FILE.with_suffix(".tmp")
@@ -43,12 +44,12 @@ def write_state(data: dict):
     tmp_file.replace(STATE_FILE)
 
 
-def is_logged_in(page) -> bool:
-    try:
-        page.wait_for_selector(config.SEL_LOGGED_IN_MARKER, timeout=3000)
+def on_login_page(page) -> bool:
+    if page.locator(config.SEL_LOGIN_INPUT).count() > 0:
         return True
-    except Exception:
-        return False
+    if config.SEL_LOGGED_IN_MARKER:
+        return page.locator(config.SEL_LOGGED_IN_MARKER).count() == 0
+    return False
 
 
 def login(page):
@@ -57,7 +58,7 @@ def login(page):
     page.fill(config.SEL_LOGIN_INPUT, config.ICAN_MAIL)
     page.fill(config.SEL_PASS_INPUT, config.ICAN_PASSWORD)
     page.click(config.SEL_SUBMIT_BTN)
-    page.wait_for_selector(config.SEL_LOGGED_IN_MARKER, timeout=15000)
+    page.wait_for_selector(config.SEL_LOGGED_IN_MARKER, timeout=20000)
     logger.info("[+] Вход выполнен")
 
 
@@ -73,15 +74,12 @@ def read_reading(page) -> dict:
         "value": value.strip() if value else None,
         "unit": unit.strip() if unit else None,
         "time": timestamp.strip() if timestamp else None,
-        "fetched_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
-
 def main():
-    if not config.ICAN_MAIL or not config.ICAN_PASSWORD:
-        logger.error('[X] Не найдены ICAN_MAIL или ICAN_PASSWORD в ".env"')
-        return
+    signal.signal(signal.SIGTERM, _request_shutdown)
 
     BROWSER_PROFILE_DIR.mkdir(exist_ok=True)
 
@@ -90,33 +88,40 @@ def main():
             str(BROWSER_PROFILE_DIR),
             headless=config.HEADLESS,
         )
-        page = context.pages[0] if context.pages else context.new_page()
+        try:
+            page = context.pages[0] if context.pages else context.new_page()
 
-        logger.info(f"[>] Парсер запущен. Файл: {STATE_FILE}")
-        
-        page.goto(config.DEVICE_PAGE_URL)
-        if not is_logged_in(page):
-            login(page)
-        
-        
-        logger.info("[+] Вход выполнен, начата проверка")
-        
-        while True:
-            try:
-                data = read_reading(page)
-                write_state(data)
-                logger.info(f"[i] {data['value']} {data['unit']}")
-            except Exception as e:
-                logger.warning(f"[X] Ошибка: {e}")
-                if not is_logged_in(page):
-                    try:
-                        login(page)
-                    except Exception as e2:
-                        logger.warning(f"[X] Не удалось перелогиниться: {e2}")
-            
-            sleep_time = random.randint(config.MIN_SECONDS_INTERVAL, config.MAX_SECONDS_INTERVAL)
-            time.sleep(sleep_time)            
-                            
+            logger.info(f"[>] Парсер запущен. Файл: {STATE_FILE}")
+
+            page.goto(config.DEVICE_PAGE_URL)
+            if on_login_page(page):
+                login(page)
+
+            logger.info("[+] Вход выполнен, начата проверка")
+
+            consecutive_failures = 0
+            while True:
+                try:
+                    data = read_reading(page)
+                    write_state(data)
+                    logger.info(f"[i] {data['value']} {data['unit']}")
+                    consecutive_failures = 0
+                except TimeoutError as e:
+                    consecutive_failures += 1
+                    logger.warning(f"[X] Таймаут: {e}")
+                    if on_login_page(page) or consecutive_failures >= 3:
+                        try:
+                            login(page)
+                            consecutive_failures = 0
+                        except Exception as e2:
+                            logger.warning(f"[X] Не удалось перелогиниться: {e2}")
+                except Exception as e:
+                    logger.warning(f"[X] Ошибка: {e}")
+
+                sleep_time = random.randint(config.MIN_SECONDS_INTERVAL, config.MAX_SECONDS_INTERVAL)
+                time.sleep(sleep_time)
+        finally:
+            context.close()
 
 
 if __name__ == "__main__":
