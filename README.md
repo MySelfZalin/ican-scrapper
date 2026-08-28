@@ -6,6 +6,8 @@
 ![Playwright](https://img.shields.io/badge/Playwright-ok-green)
 ![Docker](https://img.shields.io/badge/Docker-ready-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
+![Pylint](https://github.com/MySelfZalin/ican-scrapper/actions/workflows/pylint.yml/badge.svg)
+
 
 ![Пример логов](docs/screenshot-logs.png)
 
