@@ -220,12 +220,15 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-
 # project
 
+__pycache__/
+.git
+.venv
+.env
 browser_profile/
 latest.json
 latest.json.tmp
 *.zip
-data/
+data
 
