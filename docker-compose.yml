@@ -1,6 +1,10 @@
 services:
       ican_srapper:
-            build: .
+            build:
+                  context: .
+                  args:
+                        UID: 1000
+                        GID: 1000
             container_name: ican_scrapper
             restart: unless-stopped
 
@@ -8,7 +12,7 @@ services:
                   - TZ=Europe/Moscow
 
             env_file:
-                  - .env 
+                  - .env
 
             volumes:
                   - ./data:/app/data

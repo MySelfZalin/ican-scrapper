@@ -21,6 +21,8 @@ latest.json.tmp
 *.zip
 *.log
 *.log.*
+data/
+docs/
 
 Dockerfile
 docker-compose.yml
