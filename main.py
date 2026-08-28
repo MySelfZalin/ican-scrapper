@@ -74,7 +74,7 @@ def read_reading(page) -> dict:
         "value": value.strip() if value else None,
         "unit": unit.strip() if unit else None,
         "time": timestamp.strip() if timestamp else None,
-        "fetched_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "fetched_at": datetime.now(tz=datetime.now().astimezone().tzinfo).strftime("%Y-%m-%d %H:%M:%S"),
     }
 
 
@@ -113,9 +113,9 @@ def main():
                         try:
                             login(page)
                             consecutive_failures = 0
-                        except Exception as e2:
+                        except Exception as e2: # noqa: BLE001 - парсер должен продолжить работу
                             logger.warning(f"[X] Не удалось перелогиниться: {e2}")
-                except Exception as e:
+                except Exception as e: # noqa: BLE001 - ловим всё чтобы не упасть
                     logger.warning(f"[X] Ошибка: {e}")
 
                 sleep_time = random.randint(config.MIN_SECONDS_INTERVAL, config.MAX_SECONDS_INTERVAL)
